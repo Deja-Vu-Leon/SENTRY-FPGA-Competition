@@ -58,7 +58,8 @@ static bool authorized(httpd_req_t *req)
     gateway_config_t settings;
     config_read(&settings);
     char authorization[160], expected[160];
-    if (!settings.token[0] || httpd_req_get_hdr_value_str(req, "Authorization", authorization, sizeof(authorization)) != ESP_OK)
+    if (strlen(settings.token) < 12 ||
+        httpd_req_get_hdr_value_str(req, "Authorization", authorization, sizeof(authorization)) != ESP_OK)
         return false;
     snprintf(expected, sizeof(expected), "Bearer %s", settings.token);
     if (strlen(expected) != strlen(authorization)) return false;

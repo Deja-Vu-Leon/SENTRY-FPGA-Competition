@@ -76,7 +76,7 @@ esp_err_t config_update(const cJSON *json, char *error, size_t capacity)
         {"deepseek_api_key", next.api_key, sizeof(next.api_key), 0},
         {"model", next.model, sizeof(next.model), 1},
         {"access_token", next.token, sizeof(next.token), 12},
-        {"ap_password", next.ap_password, sizeof(next.ap_password), 8},
+        {"ap_password", next.ap_password, sizeof(next.ap_password), 0},
     };
     esp_err_t result = ESP_OK;
     for (size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i) {
@@ -91,8 +91,9 @@ esp_err_t config_update(const cJSON *json, char *error, size_t capacity)
         strlcpy(fields[i].data, value->valuestring, fields[i].size);
     }
     if (result == ESP_OK && (!wifi_password_valid(next.wifi_password, true) ||
-                            !wifi_password_valid(next.ap_password, false))) {
-        strlcpy(error, "Wi-Fi password requires 8-63 characters, 64 hex digits, or an open STA", capacity);
+                            !wifi_password_valid(next.ap_password, true) ||
+                            strlen(next.ap_password) > 63)) {
+        strlcpy(error, "Invalid Wi-Fi password; AP needs 8-63 characters or empty to disable", capacity);
         result = ESP_ERR_INVALID_ARG;
     }
     if (result == ESP_OK && strpbrk(next.api_key, "\r\n")) {

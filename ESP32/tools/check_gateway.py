@@ -1,13 +1,12 @@
 """RK-side gateway readiness and optional real DeepSeek connectivity check."""
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
 import time
 
-from gateway_client import Gateway
+from gateway_client import Gateway, configured_token
 
 
 def status_failures(status):
@@ -25,7 +24,7 @@ def main():
     parser.add_argument("--device-only", action="store_true", help="Skip RK-specific service and IME checks")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
-    gateway = Gateway(args.url, os.environ.get("SENTRY_ACCESS_TOKEN", "sentry-development-token"), timeout=8)
+    gateway = Gateway(args.url, configured_token(), timeout=8)
     report = dict(passed=False, checks=[], failures=[], api_test="not_requested")
     failures = []
     try:

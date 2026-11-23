@@ -57,11 +57,11 @@ config SENTRY_WIFI_PASSWORD
     string "Upstream Wi-Fi password"
     default ""
 config SENTRY_AP_PASSWORD
-    string "Phone access point password, at least 8 characters"
-    default "change-this-ap-password"
+    string "Phone access point password (empty disables AP, otherwise 8-63 characters)"
+    default ""
 config SENTRY_API_TOKEN
-    string "Local access token (Bearer token)"
-    default "sentry-development-token"
+    string "Local access token (set before enabling API access)"
+    default ""
 config SENTRY_DEEPSEEK_MODEL
     string "DeepSeek model"
     default "deepseek-flash"

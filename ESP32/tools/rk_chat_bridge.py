@@ -1,11 +1,10 @@
 """Serve HDMI F7 text requests through ESP32 in a separate process."""
 import json
 import logging
-import os
 from pathlib import Path
 import time
 
-from gateway_client import Gateway
+from gateway_client import Gateway, configured_token
 
 
 ROOT = Path("/run/sentry-esp32")
@@ -20,7 +19,7 @@ def publish(text):
 def main():
     logging.basicConfig(level=logging.INFO)
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
-    gateway = Gateway("http://192.168.50.1", os.environ.get("SENTRY_ACCESS_TOKEN", "sentry-development-token"))
+    gateway = Gateway("http://192.168.50.1", configured_token())
     request = ROOT / "question.txt"
     while True:
         if request.exists():

@@ -3,11 +3,10 @@ import argparse
 import hashlib
 import json
 import logging
-import os
 from pathlib import Path
 import time
 
-from gateway_client import Gateway
+from gateway_client import Gateway, configured_token
 
 
 def send(gateway, source, directory):
@@ -46,7 +45,7 @@ def main():
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-    gateway = Gateway(args.url, os.environ.get("SENTRY_ACCESS_TOKEN", "sentry-development-token"), timeout=15)
+    gateway = Gateway(args.url, configured_token(), timeout=15)
     args.state.parent.mkdir(parents=True, exist_ok=True)
     if args.state.exists():
         state = json.loads(args.state.read_text())

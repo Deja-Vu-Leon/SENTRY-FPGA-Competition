@@ -11,8 +11,20 @@ import urllib.request
 import uuid
 
 
+def configured_token():
+    token = os.environ.get("SENTRY_ACCESS_TOKEN")
+    if not token and os.name == "posix" and os.geteuid() == 0:
+        try:
+            token = Path("/etc/sentry-esp32/access-token").read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            pass
+    return token
+
+
 class Gateway:
     def __init__(self, base_url, token, timeout=30):
+        if not token:
+            raise ValueError("Set SENTRY_ACCESS_TOKEN or supply an explicit access token")
         self.base = base_url.rstrip("/")
         self.token = token
         self.timeout = timeout
@@ -63,7 +75,7 @@ class Gateway:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://192.168.50.1")
-    parser.add_argument("--token", default=os.environ.get("SENTRY_ACCESS_TOKEN", "sentry-development-token"))
+    parser.add_argument("--token", default=None)
     actions = parser.add_subparsers(dest="action", required=True)
     actions.add_parser("status")
     actions.add_parser("events")
@@ -77,7 +89,7 @@ def main():
     alert.add_argument("metadata", type=Path)
     alert.add_argument("image", type=Path)
     args = parser.parse_args()
-    gateway = Gateway(args.url, args.token)
+    gateway = Gateway(args.url, args.token or configured_token())
     if args.action == "status":
         result = gateway.request("GET", "/v1/status")
     elif args.action == "events":

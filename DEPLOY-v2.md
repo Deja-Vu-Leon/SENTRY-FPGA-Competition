@@ -33,9 +33,9 @@ sudo bash start-rk-cockpit.sh
 
 ## ESP32-P4-NANO
 
-使用 ESP-IDF 6.0.2 和兼容 ESP-Hosted 的板载 C6 固件。在 `ESP32/` 中执行 `idf.py set-target esp32p4` 和 `idf.py build`。通过 `idf.py menuconfig` 设置自己的访问令牌及 AP 密码。烧录后通过 [协议](ESP32/PROTOCOL.md)配置上游 Wi-Fi 和 DeepSeek API Key，或用 `ESP32/tools/gateway_client.py` 的 `configure` 命令从仅保存在本地的 JSON 文件提交。
+使用 ESP-IDF 6.0.2 和兼容 ESP-Hosted 的板载 C6 固件。在 `ESP32/` 中执行 `idf.py set-target esp32p4`，通过 `idf.py menuconfig` 设置自己的网关访问令牌，再执行 `idf.py build`。未设置令牌时 API 拒绝访问。AP 密码留空时热点关闭，可只使用直连网口或上游 Wi-Fi。烧录后从可信的直连网口使用 [协议](ESP32/PROTOCOL.md)配置上游 Wi-Fi 和 DeepSeek API Key，也可用 `ESP32/tools/gateway_client.py` 的 `configure` 命令提交仅保存在本地的 JSON 文件。请将设备配置、密钥和包含私有配置的构建产物保留在本机。
 
-网口默认 ESP32 为 `192.168.50.1/24`，RK 的直连接口为 `192.168.50.2/24`，另保留 RK 与 PC 的管理网口。将 `ESP32/tools/` 中的 Python 程序和 systemd 服务按文件里的路径部署。把与 ESP32 配置一致的 `SENTRY_ACCESS_TOKEN` 注入后台服务和测试环境。
+网口默认 ESP32 为 `192.168.50.1/24`，RK 的直连接口为 `192.168.50.2/24`，另保留 RK 与 PC 的管理网口。将 `ESP32/tools/` 中的 Python 程序和 systemd 服务按文件里的路径部署。客户端通过 `SENTRY_ACCESS_TOKEN` 或显式参数读取令牌。若启用 Windows 启动器的 RK 自检，可在 RK 的 `/etc/sentry-esp32/access-token` 保存同一令牌，设置为 root 所有、权限 `0600`。后台服务没有专门注入环境变量时也读取该文件。
 
 ## Windows 一键程序
 

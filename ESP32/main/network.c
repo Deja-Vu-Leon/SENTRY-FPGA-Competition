@@ -108,9 +108,16 @@ static void start_wifi(void)
 {
     gateway_config_t config;
     config_read(&config);
-    station = esp_netif_create_default_wifi_sta();
-    access_point = esp_netif_create_default_wifi_ap();
-    configASSERT(station && access_point);
+    bool use_sta = config.wifi_ssid[0] != 0;
+    size_t ap_length = strnlen(config.ap_password, sizeof(config.ap_password));
+    bool use_ap = ap_length >= 8 && ap_length <= 63;
+    if (!use_sta && !use_ap) {
+        ESP_LOGI(TAG, "Wi-Fi unconfigured; configure through Ethernet");
+        return;
+    }
+    if (use_sta) station = esp_netif_create_default_wifi_sta();
+    if (use_ap) access_point = esp_netif_create_default_wifi_ap();
+    configASSERT((!use_sta || station) && (!use_ap || access_point));
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&init));
     wifi_config_t ap = {0}, sta = {0};
@@ -124,11 +131,11 @@ static void start_wifi(void)
     memcpy(sta.sta.password, config.wifi_password, strnlen(config.wifi_password, sizeof(sta.sta.password)));
     sta.sta.pmf_cfg.capable = true;
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(config.wifi_ssid[0] ? WIFI_MODE_APSTA : WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap));
-    if (config.wifi_ssid[0]) ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(use_sta ? (use_ap ? WIFI_MODE_APSTA : WIFI_MODE_STA) : WIFI_MODE_AP));
+    if (use_ap) ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap));
+    if (use_sta) ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta));
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(TAG, "Phone access point SENTRY-Gateway, http://192.168.4.1");
+    if (use_ap) ESP_LOGI(TAG, "Phone access point SENTRY-Gateway, http://192.168.4.1");
 }
 
 void network_start(void)

@@ -3,7 +3,7 @@
 设备提供 HTTP/1.1 服务，默认 `http://192.168.50.1`。除静态网页 `GET /` 外均要求请求头：
 
 ```http
-Authorization: Bearer sentry-development-token
+Authorization: Bearer <YOUR_LOCAL_ACCESS_TOKEN>
 ```
 
 JSON 使用 UTF-8，JSON 请求体最大 8192 字节。请求应带准确 Content-Length。JSON 响应和错误使用 `application/json`，错误体包含 `error`。
