@@ -1,0 +1,6 @@
+dependencies:
+  idf: ">=6.0.2,<6.1"
+  espressif/esp_wifi_remote: "^1.6.5"
+  espressif/esp_hosted: "~2"
+  espressif/cjson: "^1.7.19"
+  espressif/ip101: "^1.1.0"

@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SENTRY 报警记录</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101719;
+      --panel: #192426;
+      --line: #344745;
+      --text: #edf4ef;
+      --dim: #acbcb7;
+      --mint: #a4f2d0;
+      --amber: #f6b687;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font:
+        15px "Microsoft YaHei",
+        sans-serif;
+    }
+    button,
+    input {
+      font: inherit;
+    }
+    button,
+    a.download {
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    button:hover,
+    a.download:hover {
+      border-color: var(--mint);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+    input {
+      min-width: 0;
+      width: 100%;
+      padding: 11px;
+      background: #0d1415;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 3px;
+    }
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--mint);
+      outline-offset: 3px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 19px 5vw;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      font-size: 20px;
+      letter-spacing: 3px;
+      font-weight: 700;
+    }
+    .brand b {
+      color: var(--mint);
+    }
+    header span {
+      color: var(--dim);
+      font-size: 13px;
+    }
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 35px 24px;
+    }
+    .heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    h1 {
+      font-size: 30px;
+      font-weight: 500;
+      margin: 0 0 18px;
+    }
+    #network {
+      color: var(--dim);
+      font-size: 13px;
+      line-height: 1.8;
+      margin-bottom: 28px;
+    }
+    .connect {
+      display: flex;
+      gap: 12px;
+      max-width: 550px;
+    }
+    .connect input {
+      flex: 1;
+    }
+    .message {
+      min-height: 24px;
+      color: var(--amber);
+      line-height: 1.6;
+      margin: 16px 0;
+    }
+    .tools {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .tools label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--dim);
+    }
+    .tools input {
+      width: 18px;
+      height: 18px;
+    }
+    #events {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 26px;
+    }
+    .event {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .photo {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: contain;
+      background: #090e0f;
+      display: block;
+    }
+    .pending {
+      aspect-ratio: 16/9;
+      display: grid;
+      place-items: center;
+      color: var(--dim);
+      background: #090e0f;
+    }
+    .detail {
+      padding: 19px;
+    }
+    .eventhead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--mint);
+    }
+    time {
+      font-size: 12px;
+      color: var(--dim);
+    }
+    h2 {
+      font-size: 19px;
+      font-weight: 500;
+      line-height: 1.5;
+      margin: 12px 0 18px;
+      overflow-wrap: anywhere;
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      color: var(--dim);
+      font-size: 13px;
+    }
+    .download {
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .empty {
+      border-top: 1px solid var(--line);
+      padding: 60px 0;
+      color: var(--dim);
+      grid-column: 1/-1;
+    }
+    footer {
+      margin-top: 35px;
+      font-size: 12px;
+      color: var(--dim);
+    }
+    @media (max-width: 650px) {
+      header {
+        padding: 18px 20px;
+      }
+      header span {
+        max-width: 150px;
+        text-align: right;
+      }
+      main {
+        padding: 28px 18px;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      #events {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+      .connect {
+        gap: 8px;
+      }
+      .connect button {
+        flex-shrink: 0;
+      }
+      .eventhead {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .heading {
+        align-items: flex-start;
+      }
+      .heading button {
+        white-space: nowrap;
+      }
+    }
+  </style>
+  <header>
+    <div class="brand"><b>S</b>ENTRY</div>
+    <span>ESP32-P4 · 无线报警终端</span>
+  </header>
+  <main>
+    <div class="heading">
+      <h1>报警记录</h1>
+      <button id="refresh" type="button">刷新</button>
+    </div>
+    <div id="network">等待连接设备</div>
+    <form class="connect" id="login">
+      <input
+        id="token"
+        type="password"
+        placeholder="输入设备访问令牌"
+        aria-label="设备访问令牌"
+        autocomplete="off"
+        required
+      /><button>连接</button>
+    </form>
+    <p class="message" id="message" role="status"></p>
+    <div class="tools">
+      <label><input id="auto" type="checkbox" checked />自动刷新</label
+      ><span id="count"></span>
+    </div>
+    <section id="events" aria-label="报警列表">
+      <div class="empty">连接设备后查看报警图像、事件和时间</div>
+    </section>
+    <footer>记录保存在设备中，存储空间不足时循环覆盖较早记录。</footer>
+  </main>
+  <script>
+    "use strict";
+    const $ = (id) => document.getElementById(id);
+    let token = "",
+      busy = false,
+      timer,
+      images = new Map(),
+      lastSignature = "";
+    const errors = {
+      access_token_required: "访问令牌有误，请重新输入",
+      image_not_found: "报警图像尚未上传",
+    };
+    async function request(path, blob = false) {
+      const response = await fetch(path, {
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw Error(
+          errors[body.error] || "设备请求失败（" + response.status + "）",
+        );
+      }
+      return blob ? response.blob() : response.json();
+    }
+    function node(tag, text, cls) {
+      const n = document.createElement(tag);
+      if (text !== undefined) n.textContent = text;
+      if (cls) n.className = cls;
+      return n;
+    }
+    async function draw(events) {
+      const signature = JSON.stringify(events);
+      if (signature === lastSignature) return;
+      const fragment = document.createDocumentFragment(),
+        keep = new Set();
+      let complete = true;
+      if (!events.length) fragment.append(node("div", "暂无报警记录", "empty"));
+      for (const event of events) {
+        const card = node("article", undefined, "event"),
+          key = event.event_id;
+        if (event.has_image) {
+          try {
+            let url = images.get(key);
+            if (!url) {
+              url = URL.createObjectURL(
+                await request(
+                  "/v1/alerts/" + encodeURIComponent(key) + "/image",
+                  true,
+                ),
+              );
+              images.set(key, url);
+            }
+            keep.add(key);
+            const img = node("img", undefined, "photo");
+            img.src = url;
+            img.alt = event.camera + " · " + event.reason;
+            card.append(img);
+          } catch (error) {
+            complete = false;
+            card.append(node("div", error.message, "pending"));
+          }
+        } else card.append(node("div", "报警图像待上传", "pending"));
+        const detail = node("div", undefined, "detail"),
+          head = node("div", undefined, "eventhead");
+        head.append(
+          node("strong", event.camera),
+          node("time", event.event_time),
+        );
+        detail.append(head, node("h2", event.reason));
+        const meta = node("div", undefined, "meta");
+        meta.append(
+          node(
+            "span",
+            typeof event.confidence === "number"
+              ? "置信度 " + (event.confidence * 100).toFixed(1) + "%"
+              : "置信度未提供",
+          ),
+        );
+        if (images.has(key)) {
+          const a = node("a", "下载图像", "download");
+          a.href = images.get(key);
+          a.download = key + ".jpg";
+          meta.append(a);
+        }
+        detail.append(meta);
+        card.append(detail);
+        fragment.append(card);
+      }
+      $("events").replaceChildren(fragment);
+      for (const [key, url] of images)
+        if (!keep.has(key)) {
+          URL.revokeObjectURL(url);
+          images.delete(key);
+        }
+      lastSignature = complete ? signature : "";
+      $("count").textContent = events.length + " 条记录";
+    }
+    async function refresh() {
+      if (!token || busy) return;
+      busy = true;
+      $("refresh").disabled = true;
+      try {
+        const [status, records] = await Promise.all([
+          request("/v1/status"),
+          request("/v1/alerts"),
+        ]);
+        $("network").textContent =
+          "网口 " +
+          (status.ethernet_link ? "已连接" : "未连接") +
+          " · Wi-Fi " +
+          (status.wifi_online ? status.wifi_ip : "上游未连接") +
+          " · 运行 " +
+          Math.floor(status.uptime_seconds / 60) +
+          " 分钟";
+        await draw(records.events);
+        $("message").textContent = "";
+      } catch (error) {
+        $("message").textContent = error.message;
+      } finally {
+        busy = false;
+        $("refresh").disabled = false;
+        clearTimeout(timer);
+        if ($("auto").checked) timer = setTimeout(refresh, 5000);
+      }
+    }
+    $("login").addEventListener("submit", (event) => {
+      event.preventDefault();
+      token = $("token").value;
+      lastSignature = "";
+      refresh();
+    });
+    $("refresh").onclick = refresh;
+    $("auto").onchange = () => {
+      $("auto").checked ? refresh() : clearTimeout(timer);
+    };
+    window.addEventListener("beforeunload", () => {
+      for (const url of images.values()) URL.revokeObjectURL(url);
+    });
+  </script>
+</html>

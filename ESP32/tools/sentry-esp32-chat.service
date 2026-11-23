@@ -1,0 +1,18 @@
+[Unit]
+Description=SENTRY HDMI F7 ESP32 chat bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/linaro/sentry-esp32
+RuntimeDirectory=sentry-esp32
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/python3 -u rk_chat_bridge.py
+Restart=on-failure
+RestartSec=5
+Nice=10
+CPUWeight=10
+
+[Install]
+WantedBy=multi-user.target

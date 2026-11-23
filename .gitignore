@@ -17,3 +17,11 @@ media/
 *.pem
 *.key
 .rk3576-vision-deploy-*
+rk-known-hosts
+*.local.json
+*.exe
+*.ko
+*.timing
+ESP32/build*/
+ESP32/managed_components/
+RK/bringup/rk-ai/alerts/

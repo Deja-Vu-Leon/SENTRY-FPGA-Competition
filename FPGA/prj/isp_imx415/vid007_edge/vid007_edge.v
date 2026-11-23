@@ -1,0 +1,234 @@
+`timescale 1ns/1ps
+
+// Four pixels per clock. Synchronous line stores provide the previous two rows;
+// each 48-bit row is {four current pixels, two pixels from the preceding beat}.
+module vid007_window4 (
+    input wire clk, rst_n, valid, sof, eol,
+    input wire [31:0] pixels,
+    output reg valid_q, sof_q, eol_q,
+    output wire [47:0] top, mid, bot,
+    output wire first,
+    output reg [10:0] row_q
+);
+    reg [31:0] bank0 [0:479];
+    reg [31:0] bank1 [0:479];
+    reg [31:0] from0, from1, current_q;
+    reg [8:0] x, x_q;
+    reg [10:0] y;
+    wire [8:0] column = sof ? 9'd0 : x;
+    wire [10:0] row = sof ? 11'd0 : y;
+    wire [31:0] top_word = row_q[0] ? from1 : from0;
+    wire [31:0] mid_word = row_q[0] ? from0 : from1;
+    reg [15:0] left_top, left_mid, left_bot;
+    assign first = x_q == 0;
+    assign top = {top_word, first ? 16'b0 : left_top};
+    assign mid = {mid_word, first ? 16'b0 : left_mid};
+    assign bot = {current_q, first ? 16'b0 : left_bot};
+
+    always @(posedge clk) begin
+        if (valid && column < 480) begin
+            from0 <= bank0[column];
+            from1 <= bank1[column];
+            current_q <= pixels;
+            x_q <= column;
+            row_q <= row;
+        end
+        if (valid_q) begin
+            if (row_q[0]) bank1[x_q] <= current_q;
+            else          bank0[x_q] <= current_q;
+            left_top <= top_word[31:16];
+            left_mid <= mid_word[31:16];
+            left_bot <= current_q[31:16];
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            x <= 0;
+            y <= 0;
+            valid_q <= 0;
+            sof_q <= 0;
+            eol_q <= 0;
+        end else begin
+            valid_q <= valid && column < 480;
+            sof_q <= sof;
+            eol_q <= eol;
+            if (valid) begin
+                x <= eol ? 9'd0 : column + 1'b1;
+                y <= eol ? row + 1'b1 : row;
+            end
+        end
+    end
+endmodule
+
+module vid007_edge (
+    input wire clk, rst_n,
+    input wire valid, sof, eol, frame_done, frame_good,
+    input wire [39:0] raw10,
+    input wire full,
+    output wire push,
+    output wire [8:0] data
+);
+    localparam [10:0] SOBEL_THRESHOLD = 80;
+    wire [31:0] raw8 = {raw10[39:32], raw10[29:22], raw10[19:12], raw10[9:2]};
+    wire gray_window_valid, gray_window_sof, gray_window_eol, gray_first;
+    wire [10:0] gray_row;
+    wire [47:0] gray_mid, gray_bot;
+    vid007_window4 u_gray_rows (
+        .clk(clk), .rst_n(rst_n), .valid(valid), .sof(sof), .eol(eol), .pixels(raw8),
+        .valid_q(gray_window_valid), .sof_q(gray_window_sof), .eol_q(gray_window_eol),
+        .top(), .mid(gray_mid), .bot(gray_bot), .first(gray_first), .row_q(gray_row)
+    );
+    reg [31:0] gray;
+    reg gray_valid, gray_sof, gray_eol;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) {gray_valid, gray_sof, gray_eol} <= 0;
+        else {gray_valid, gray_sof, gray_eol} <= {gray_window_valid, gray_window_sof, gray_window_eol};
+    end
+
+    wire gauss_window_valid, gauss_window_sof, gauss_window_eol, gauss_first;
+    wire [10:0] gauss_row;
+    wire [47:0] gauss_top, gauss_mid, gauss_bot;
+    vid007_window4 u_gauss_rows (
+        .clk(clk), .rst_n(rst_n), .valid(gray_valid), .sof(gray_sof), .eol(gray_eol), .pixels(gray),
+        .valid_q(gauss_window_valid), .sof_q(gauss_window_sof), .eol_q(gauss_window_eol),
+        .top(gauss_top), .mid(gauss_mid), .bot(gauss_bot), .first(gauss_first), .row_q(gauss_row)
+    );
+    reg [31:0] gaussian;
+    reg [2:0] gauss_tags [0:1];
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            gauss_tags[0] <= 0;
+            gauss_tags[1] <= 0;
+        end else begin
+            gauss_tags[0] <= {gauss_window_valid, gauss_window_sof, gauss_window_eol};
+            gauss_tags[1] <= gauss_tags[0];
+        end
+    end
+
+    wire sobel_window_valid, sobel_window_sof, sobel_window_eol, sobel_first;
+    wire [10:0] sobel_row;
+    wire [47:0] sobel_top, sobel_mid, sobel_bot;
+    vid007_window4 u_sobel_rows (
+        .clk(clk), .rst_n(rst_n), .valid(gauss_tags[1][2]), .sof(gauss_tags[1][1]),
+        .eol(gauss_tags[1][0]), .pixels(gaussian), .valid_q(sobel_window_valid),
+        .sof_q(sobel_window_sof), .eol_q(sobel_window_eol),
+        .top(sobel_top), .mid(sobel_mid), .bot(sobel_bot), .first(sobel_first), .row_q(sobel_row)
+    );
+    reg [3:0] edge_pixels;
+    reg [2:0] sobel_tags [0:2];
+    reg [1:0] interior;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            sobel_tags[0] <= 0;
+            sobel_tags[1] <= 0;
+            sobel_tags[2] <= 0;
+            interior <= 0;
+        end else begin
+            sobel_tags[0] <= {sobel_window_valid, sobel_window_sof, sobel_window_eol};
+            sobel_tags[1] <= sobel_tags[0];
+            sobel_tags[2] <= sobel_tags[1];
+            interior <= {interior[0], !sobel_first && sobel_row >= 4};
+        end
+    end
+
+    function [9:0] weighted;
+        input [7:0] a, b, c;
+        begin weighted = {2'b0, a} + {1'b0, b, 1'b0} + {2'b0, c}; end
+    endfunction
+
+    genvar i;
+    generate for (i = 0; i < 4; i = i + 1) begin : lanes
+        localparam P = i * 8;
+        // A sliding Bayer 2x2 cell always contains R/G/G/B. Estimate luma
+        // without halving the raster; use the local sample at the outer border.
+        wire [9:0] luma = {2'b0, gray_mid[P+8+:8]} + {2'b0, gray_mid[P+16+:8]} +
+                          {2'b0, gray_bot[P+8+:8]} + {2'b0, gray_bot[P+16+:8]};
+        reg [9:0] sum_top, sum_mid, sum_bot;
+        reg gauss_border;
+        wire [11:0] gauss_sum = {2'b0, sum_top} + {1'b0, sum_mid, 1'b0} +
+                                {2'b0, sum_bot} + 12'd8;
+        reg [9:0] dx_hi, dx_lo, dy_hi, dy_lo;
+        reg [9:0] abs_x, abs_y;
+        wire [10:0] magnitude = {1'b0, abs_x} + {1'b0, abs_y};
+        always @(posedge clk) begin
+            gray[P+:8] <= (gray_row == 0 || (gray_first && i == 0)) ? gray_bot[P+16+:8] : luma[9:2];
+
+            sum_top <= weighted(gauss_top[P+:8], gauss_top[P+8+:8], gauss_top[P+16+:8]);
+            sum_mid <= weighted(gauss_mid[P+:8], gauss_mid[P+8+:8], gauss_mid[P+16+:8]);
+            sum_bot <= weighted(gauss_bot[P+:8], gauss_bot[P+8+:8], gauss_bot[P+16+:8]);
+            gauss_border <= gauss_row < 2 || (gauss_first && i < 2);
+            gaussian[P+:8] <= gauss_border ? 8'd0 : gauss_sum[11:4];
+
+            dx_hi <= weighted(sobel_top[P+16+:8], sobel_mid[P+16+:8], sobel_bot[P+16+:8]);
+            dx_lo <= weighted(sobel_top[P+:8], sobel_mid[P+:8], sobel_bot[P+:8]);
+            dy_hi <= weighted(sobel_bot[P+:8], sobel_bot[P+8+:8], sobel_bot[P+16+:8]);
+            dy_lo <= weighted(sobel_top[P+:8], sobel_top[P+8+:8], sobel_top[P+16+:8]);
+            abs_x <= dx_hi >= dx_lo ? dx_hi - dx_lo : dx_lo - dx_hi;
+            abs_y <= dy_hi >= dy_lo ? dy_hi - dy_lo : dy_lo - dy_hi;
+            edge_pixels[i] <= interior[1] && magnitude >= SOBEL_THRESHOLD;
+        end
+    end endgenerate
+
+    // The payload is a 1920x1080 raster, LSB-first, then one validity byte.
+    // Window anchors are two rows/columns after their center; the viewer aligns them.
+    reg [23:0] done_delay, good_delay;
+    reg active, half, malformed, trailer, trailer_good;
+    reg [3:0] low;
+    reg [18:0] bytes_seen;
+    wire [2:0] tags = sobel_tags[2];
+    wire start = tags[2] && tags[1];
+    wire take = tags[2] && (start ? !active && !trailer : active);
+    wire byte_ready = take && half && !start;
+    assign push = !full && (byte_ready || trailer);
+    assign data = byte_ready ? {1'b0, edge_pixels, low} :
+                              {1'b1, trailer_good ? 8'hA5 : 8'h00};
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            done_delay <= 0;
+            good_delay <= 0;
+            active <= 0;
+            half <= 0;
+            low <= 0;
+            bytes_seen <= 0;
+            malformed <= 0;
+            trailer <= 0;
+            trailer_good <= 0;
+        end else begin
+            done_delay <= {done_delay[22:0], frame_done};
+            good_delay <= {good_delay[22:0], frame_good};
+            if (trailer && !byte_ready && !full)
+                trailer <= 0;
+            if (start) begin
+                if (active) begin
+                    active <= 0;
+                    trailer <= 1;
+                    trailer_good <= 0;
+                end else if (!trailer) begin
+                    active <= 1;
+                    malformed <= 0;
+                    bytes_seen <= 0;
+                    half <= 1;
+                    low <= edge_pixels;
+                end
+            end else if (take) begin
+                half <= !half;
+                if (!half)
+                    low <= edge_pixels;
+                if (byte_ready) begin
+                    bytes_seen <= bytes_seen + 1'b1;
+                    if (full) malformed <= 1;
+                end
+                if (tags[0] && !half)
+                    malformed <= 1;
+            end
+            if (done_delay[23] && active) begin
+                active <= 0;
+                trailer <= 1;
+                trailer_good <= good_delay[23] && !malformed && !half &&
+                                bytes_seen == 19'd259200;
+            end
+        end
+    end
+endmodule

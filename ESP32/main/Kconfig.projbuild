@@ -1,0 +1,72 @@
+menu "SENTRY gateway"
+config SENTRY_ETH_IP
+    string "Ethernet static IPv4"
+    default "192.168.50.1"
+config SENTRY_ETH_MDC
+    int "Ethernet MDC GPIO"
+    range 0 54
+    default 31
+config SENTRY_ETH_MDIO
+    int "Ethernet MDIO GPIO"
+    range 0 54
+    default 52
+config SENTRY_ETH_RESET
+    int "Ethernet PHY reset GPIO (-1 for none)"
+    range -1 54
+    default 51
+config SENTRY_ETH_PHY_ADDR
+    int "Ethernet PHY address (-1 for auto)"
+    range -1 31
+    default 1
+choice SENTRY_PHY
+    prompt "Ethernet PHY"
+    default SENTRY_PHY_IP101
+config SENTRY_PHY_IP101
+    bool "IP101"
+config SENTRY_PHY_GENERIC
+    bool "Generic IEEE 802.3 PHY"
+endchoice
+config SENTRY_ETH_CLOCK_OUT
+    bool "Output 50MHz RMII clock (otherwise external input)"
+    default n
+config SENTRY_ETH_CLOCK
+    int "RMII reference clock GPIO"
+    default 50
+config SENTRY_ETH_TX_EN
+    int "RMII TX enable GPIO"
+    default 49
+config SENTRY_ETH_TXD0
+    int "RMII TXD0 GPIO"
+    default 34
+config SENTRY_ETH_TXD1
+    int "RMII TXD1 GPIO"
+    default 35
+config SENTRY_ETH_CRS
+    int "RMII CRS_DV GPIO"
+    default 28
+config SENTRY_ETH_RXD0
+    int "RMII RXD0 GPIO"
+    default 29
+config SENTRY_ETH_RXD1
+    int "RMII RXD1 GPIO"
+    default 30
+config SENTRY_WIFI_SSID
+    string "Upstream Wi-Fi SSID (can also be configured over Ethernet)"
+    default ""
+config SENTRY_WIFI_PASSWORD
+    string "Upstream Wi-Fi password"
+    default ""
+config SENTRY_AP_PASSWORD
+    string "Phone access point password, at least 8 characters"
+    default "change-this-ap-password"
+config SENTRY_API_TOKEN
+    string "Local access token (Bearer token)"
+    default "sentry-development-token"
+config SENTRY_DEEPSEEK_MODEL
+    string "DeepSeek model"
+    default "deepseek-flash"
+config SENTRY_ALERT_LIMIT
+    int "Maximum retained alarm records"
+    range 2 100
+    default 32
+endmenu

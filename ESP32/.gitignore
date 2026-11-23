@@ -1,0 +1,7 @@
+/build/
+/managed_components/
+/sdkconfig
+/sdkconfig.old
+/settings.local.json
+/validation/*.log
+__pycache__/

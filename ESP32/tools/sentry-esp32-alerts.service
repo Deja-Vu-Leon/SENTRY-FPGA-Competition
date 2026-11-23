@@ -1,0 +1,17 @@
+[Unit]
+Description=SENTRY ESP32 alarm image relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/linaro/sentry-esp32
+ExecStart=/usr/bin/python3 -u rk_alert_relay.py --directory /home/linaro/sentry-vid007/rk-ai/alerts --state /var/lib/sentry-esp32/relay.json
+Restart=on-failure
+RestartSec=5
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=10
+
+[Install]
+WantedBy=multi-user.target
